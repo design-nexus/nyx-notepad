@@ -1,5 +1,5 @@
 //! The session: which tabs were open, where their cursors were, and recent files
-//! (`~/.local/share/nixe-notepad/session.toml`). Unsaved text lives next to it in
+//! (`~/.local/share/nyx-notepad/session.toml`). Unsaved text lives next to it in
 //! `scratch/<id>.txt`, so closing the window never loses anything.
 
 use crate::doc::{self, Doc};
@@ -116,7 +116,7 @@ pub fn save_now() {
             if d.scratch_stale.get() || !file.exists() {
                 match cmd::atomic_write(&file, d.text()) {
                     Ok(()) => d.scratch_stale.set(false),
-                    Err(e) => eprintln!("nixe-notepad: couldn't keep unsaved text: {e:#}"),
+                    Err(e) => eprintln!("nyx-notepad: couldn't keep unsaved text: {e:#}"),
                 }
             }
         } else if file.exists() {

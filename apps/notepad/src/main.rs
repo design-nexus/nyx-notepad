@@ -17,17 +17,17 @@ use gtk::prelude::*;
 use gtk::{gio, glib};
 use std::path::PathBuf;
 
-pub const APP_ID: &str = "io.github.design_nexus.nixe.Notepad";
+pub const APP_ID: &str = "io.github.design_nexus.nyx.Notepad";
 
-const USAGE: &str = "Usage: nixe-notepad [OPTIONS] [FILE…]\n\
+const USAGE: &str = "Usage: nyx-notepad [OPTIONS] [FILE…]\n\
 \n\
   FILE            open this file in a tab (a new name is created on the first save)\n\
   --section ID    open the settings card with: --section settings\n\
   --toggle        close the window if it's open, otherwise open it (for a keybinding)\n";
 
 fn main() -> glib::ExitCode {
-    nixe_core::app::init(nixe_core::app::App { slug: "nixe-notepad", name: "Notepad" });
-    nixe_core::migrate::from(&["nexus-notepad"]);
+    nyx_core::app::init(nyx_core::app::App { slug: "nyx-notepad", name: "Notepad" });
+    nyx_core::migrate::from(&["nexus-notepad"]);
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--help" || a == "-h") {
         print!("{USAGE}");
@@ -45,8 +45,8 @@ fn main() -> glib::ExitCode {
     // its arguments to the copy that's open.
     let id = std::env::var("NOTEPAD_APP_ID").unwrap_or_else(|_| APP_ID.to_string());
     let app = gtk::Application::builder().application_id(id).flags(gio::ApplicationFlags::HANDLES_COMMAND_LINE).build();
-    // Nixe Assistant works the open tabs through this (only the primary instance serves it).
-    app.connect_startup(|app| nixe_core::control::serve(app, control::tools(), control::handle));
+    // Nyx Assistant works the open tabs through this (only the primary instance serves it).
+    app.connect_startup(|app| nyx_core::control::serve(app, control::tools(), control::handle));
     app.connect_command_line(|app, cl| {
         let argv: Vec<String> = cl.arguments().iter().map(|a| a.to_string_lossy().to_string()).collect();
         let has = |flag: &str| argv.iter().any(|a| a == flag);

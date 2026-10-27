@@ -25,7 +25,7 @@ from your Omarchy theme and fits a half-screen tile.
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/design-nexus/nixe-notepad/main/install.sh | bash -s -- notepad
+curl -fsSL https://raw.githubusercontent.com/design-nexus/nyx-notepad/main/install.sh | bash -s -- notepad
 ```
 
 It builds from source (installing Rust and GTK 4 with pacman if needed) and installs
@@ -36,24 +36,24 @@ To remove it, run the same line with `uninstall.sh` in place of `install.sh`
 ## Use
 
 ```sh
-nixe-notepad [FILE…]           # open files in tabs (a new name is created on the first save)
-nixe-notepad --toggle          # open or close the window, for a keybinding
-nixe-notepad --section settings
+nyx-notepad [FILE…]           # open files in tabs (a new name is created on the first save)
+nyx-notepad --toggle          # open or close the window, for a keybinding
+nyx-notepad --section settings
 ```
 
 Press <kbd>F1</kbd> for every shortcut.
 
 It opens floating and centered: the installer adds a rule for it to
-`~/.config/hypr/nixe.lua`.
+`~/.config/hypr/nyx.lua`.
 
 ## Files
 
 | Path | What |
 | --- | --- |
-| `~/.config/nixe-notepad/settings.toml` | Settings |
-| `~/.config/nixe-notepad/themes/*.toml` | Your own themes |
-| `~/.local/share/nixe-notepad/session.toml` | Open tabs and recent files |
-| `~/.local/share/nixe-notepad/scratch/` | Unsaved text |
+| `~/.config/nyx-notepad/settings.toml` | Settings |
+| `~/.config/nyx-notepad/themes/*.toml` | Your own themes |
+| `~/.local/share/nyx-notepad/session.toml` | Open tabs and recent files |
+| `~/.local/share/nyx-notepad/scratch/` | Unsaved text |
 
 ## License
 

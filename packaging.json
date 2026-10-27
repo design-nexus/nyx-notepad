@@ -2,7 +2,7 @@
   "application": "notepad",
   "directory": "notepad",
   "packages": [
-    "nixe-notepad"
+    "nyx-notepad"
   ],
   "manifest": "Cargo.toml",
   "prepare": [],
@@ -13,9 +13,9 @@
       "test",
       "--locked",
       "-p",
-      "nixe-notepad",
+      "nyx-notepad",
       "--bin",
-      "nixe-notepad"
+      "nyx-notepad"
     ]
   ]
 }

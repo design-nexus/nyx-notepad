@@ -1,9 +1,9 @@
-//! Notepad's tools on the control interface (`nixe_core::control`), for Nixe Assistant:
+//! Notepad's tools on the control interface (`nyx_core::control`), for Nyx Assistant:
 //! open, read and write tabs directly instead of typing into the window.
 
 use crate::doc;
 use gtk::prelude::*;
-use nixe_core::control::{self, text};
+use nyx_core::control::{self, text};
 use serde_json::{json, Value};
 
 pub fn tools() -> Value {

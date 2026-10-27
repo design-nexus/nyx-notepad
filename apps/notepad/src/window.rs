@@ -5,7 +5,7 @@
 use crate::doc::{self, Change};
 use crate::{editor, paths, prefs, session, settings_dialog, theme, widgets};
 use gtk::prelude::*;
-use nixe_ui::chrome;
+use nyx_ui::chrome;
 use gtk::{gdk, glib};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -74,7 +74,7 @@ fn build(app: &gtk::Application) {
     window.add_css_class("notepad-window");
     // No client-side titlebar: Hyprland manages the window.
     window.set_titlebar(Some(&gtk::Box::new(gtk::Orientation::Horizontal, 0)));
-    nixe_ui::keys::install(&window, nixe_ui::keys::Common { shortcuts: Some(show_shortcuts), ..Default::default() });
+    nyx_ui::keys::install(&window, nyx_ui::keys::Common { shortcuts: Some(show_shortcuts), ..Default::default() });
     window.set_icon_name(Some(crate::APP_ID));
 
     let top = find_strip();
@@ -685,7 +685,7 @@ type ToastAction<'a> = Option<(&'a str, Box<dyn Fn()>)>;
 
 fn show_toast(message: &str, action: ToastAction<'_>) {
     let Some(ui) = ui() else {
-        eprintln!("nixe-notepad: {message}");
+        eprintln!("nyx-notepad: {message}");
         return;
     };
     let overlay = ui.borrow().overlay.clone();
