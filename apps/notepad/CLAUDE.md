@@ -3,10 +3,12 @@
 - The command, crate and config/data folders are all `nyx-notepad`.
   App id `io.github.design_nexus.nyx.Notepad`.
 - GTK4 (gtk4-rs 0.11) + Rust, no libadwaita, no GtkSourceView. Built to
-  `STYLE.md`. The window is one flat, monospace surface split by hairlines: the tab
-  bar (file menu, the tabs or with one tab its name, find, settings), the find and
-  replace strip while finding, the editor and a status bar (`F1 Shortcuts` · line, column, words, line
-  endings). There is no sidebar. Settings is a card over the window
+  `STYLE.md` (Nyx 2.0, one blended surface), with minimal chrome: one bar on top
+  (`nyx_ui::chrome::app_header`) holds the app, its tabs and + (with one tab and "always
+  show tabs" off, the file's name as the subtitle instead), and at the end find (a button;
+  the field, count and replace while finding), the file menu and Settings. Then the
+  editor and a quiet readout at its foot (line, column, words, line endings); no tab row,
+  no status bar, no sidebar. Settings is a card over the window
   (`settings_dialog.rs`, groups built in `sections/settings.rs`). The theme, widgets and settings card come from the `nyx-*` crates. Every colour is a `@theme_*` token; the text tags'
   colours (current line, matches) are mixed from `theme::palette()` in `editor::recolor`.
 - **Tabs** (`doc.rs`): `OPEN` holds each `Doc` (a `TextBuffer` sharing one tag table, its

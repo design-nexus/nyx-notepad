@@ -1,20 +1,17 @@
 .toast {
-  /* Above the status bar. */
-  margin: 18px 18px 52px;
+  /* Above the readout at the editor's foot. */
+  margin: 18px 18px 40px;
   padding: 8px 16px;
   border-radius: 10px;
   background: @theme_surface;
-  border: 1px solid @hairline;
   box-shadow: 0 4px 16px alpha(@theme_shadow, 0.5);
 }
 
 /* ---------- Tabs ---------- */
 
-/* One tab per open file, on a hairline row under the top bar. */
-.tab-bar {
-  min-height: 40px;
-  padding: 0 8px 0 10px;
-  border-bottom: 1px solid @hairline;
+/* One tab per open file, in the bar after the app's name. */
+.app-header .tab-bar {
+  margin-left: 4px;
 }
 
 .tab-bar .tabs {
@@ -22,7 +19,7 @@
 }
 
 .doc-tab {
-  margin: 5px 0;
+  margin: 7px 0;
   border-radius: 6px;
   padding: 0 2px 0 0;
   transition: background 150ms ease-out;
@@ -33,7 +30,7 @@
 }
 
 .doc-tab.active {
-  background: @nav_active;
+  background: alpha(@theme_text, 0.06);
 }
 
 window.notepad-window .doc-tab button.tab-main {
@@ -105,16 +102,6 @@ textview.editor > border.left {
   color: alpha(@theme_dim_text, 0.75);
 }
 
-.find-bar {
-  min-height: 40px;
-  padding: 0 10px 0 14px;
-  border-bottom: 1px solid @hairline;
-}
-
-window.notepad-window .find-bar entry {
-  min-height: 30px;
-}
-
 .find-count {
   color: @theme_dim_text;
   font-size: 0.86em;
@@ -122,7 +109,14 @@ window.notepad-window .find-bar entry {
   margin: 0 6px;
 }
 
-.status-readout {
+/* The cursor position and counts, quiet text at the editor's foot. */
+.doc-foot {
+  padding: 4px 16px 6px;
+}
+
+.doc-foot .status-readout {
+  color: @theme_dim_text;
+  font-size: 11.5px;
   font-feature-settings: "tnum";
 }
 
@@ -152,8 +146,8 @@ window.notepad-window button.bar-button:hover {
 
 /* A config-file menu in the top bar looks like the other bar buttons. */
 window.notepad-window menubutton.bar-button > button {
-  min-width: 30px;
-  min-height: 30px;
+  min-width: 32px;
+  min-height: 32px;
   padding: 0;
   border-radius: 6px;
   border-color: transparent;
@@ -164,29 +158,6 @@ window.notepad-window menubutton.bar-button > button {
 window.notepad-window menubutton.bar-button > button:hover {
   background: @row_hover;
   color: @theme_text;
-}
-
-window.notepad-window entry.bar-search {
-  min-height: 30px;
-  margin-right: 4px;
-}
-
-window.notepad-window button.status-help {
-  min-height: 24px;
-  padding: 0 6px;
-  border: none;
-  background: transparent;
-  color: @theme_dim_text;
-  font-weight: 500;
-}
-
-window.notepad-window button.status-help:hover {
-  color: @theme_text;
-}
-
-.status-key {
-  color: @theme_text;
-  margin: 0;
 }
 
 window.notepad-window button.dialog-nav {

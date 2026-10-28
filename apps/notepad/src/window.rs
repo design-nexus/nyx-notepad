@@ -1,6 +1,6 @@
-//! The main window: a top bar (the file menu, `Notepad / <tab>`, find and replace,
-//! settings, close), a strip of tabs, the editor and a status bar. Settings opens as a
-//! card over the window (see `settings_dialog`).
+//! The main window: one bar on top (the app, its tabs and +; find and replace while
+//! finding, the file menu and settings at the end), the editor and a quiet readout
+//! at its foot. Settings opens as a card over the window (see `settings_dialog`).
 
 use crate::doc::{self, Change};
 use crate::{editor, paths, prefs, session, settings_dialog, theme, widgets};
@@ -18,6 +18,9 @@ struct Ui {
     tab_strip: gtk::Box,
     tabs: gtk::Box,
     readout: gtk::Label,
+    /// Find and replace, shown while finding in place of the find button.
+    find_bar: gtk::Box,
+    find_button: gtk::Button,
     find: gtk::SearchEntry,
     find_count: gtk::Label,
     replace: gtk::Box,
@@ -78,16 +81,25 @@ fn build(app: &gtk::Application) {
     window.set_icon_name(Some(crate::APP_ID));
 
     let top = find_strip();
-    let (tab_bar, tab_strip, tabs) = tab_bar(&top.crumb);
+    let (tab_bar, tabs) = tab_bar();
     let editor = editor::build();
-    let (status, readout) = status_bar();
+    let (foot, readout) = foot();
+
+    // The one bar: the app and its tabs; find while finding, the file menu and Settings.
+    let header = chrome::app_header(&window, "text-x-generic-symbolic", "Notepad");
+    header.start.append(&tab_bar);
+    let find_button = widgets::bar_button("system-search-symbolic", "Find (Ctrl+F) · Replace (Ctrl+H)");
+    find_button.connect_clicked(|_| toggle_find(false));
+    header.end.append(&top.bar);
+    header.end.append(&find_button);
+    header.end.append(&file_menu());
+    header.end.append(&chrome::settings_button(settings_dialog::open));
 
     let frame = gtk::Box::new(gtk::Orientation::Vertical, 0);
     frame.add_css_class("window-frame");
-    frame.append(&tab_bar);
-    frame.append(&top.bar);
+    frame.append(&header.root);
     frame.append(&editor);
-    frame.append(&status);
+    frame.append(&foot);
 
     let overlay = gtk::Overlay::new();
     overlay.set_child(Some(&frame));
@@ -146,10 +158,12 @@ fn build(app: &gtk::Application) {
     let ui = Ui {
         window: window.clone(),
         overlay,
-        crumb: top.crumb,
-        tab_strip,
+        crumb: header.subtitle.clone(),
+        tab_strip: tab_bar,
         tabs,
         readout,
+        find_bar: top.bar,
+        find_button,
         find: top.find,
         find_count: top.find_count,
         replace: top.replace,
@@ -168,29 +182,22 @@ fn build(app: &gtk::Application) {
     });
 }
 
-/// The find strip's parts, and the tab's name for the tab bar.
+/// Find and replace's parts.
 struct TopBar {
     bar: gtk::Box,
-    crumb: gtk::Label,
     find: gtk::SearchEntry,
     find_count: gtk::Label,
     replace: gtk::Box,
     replace_entry: gtk::Entry,
 }
 
-/// The bar across the top: the file menu and where you are on the left; find,
-/// settings and close on the right.
-/// Find and replace: a strip over the editor, shown while finding.
+/// Find and replace, in the bar while finding: the find field and its match
+/// count, and the replace field after Ctrl+H.
 fn find_strip() -> TopBar {
-    // The current tab's name, shown in the tab bar when its tabs are hidden.
-    let crumb = widgets::label("", "crumb");
-    crumb.set_ellipsize(gtk::pango::EllipsizeMode::Middle);
-    crumb.set_hexpand(true);
-    crumb.set_xalign(0.0);
-
     let find = gtk::SearchEntry::new();
     find.set_placeholder_text(Some("Find"));
-    find.set_visible(false);
+    find.add_css_class("bar-search");
+    find.set_width_chars(20);
     find.set_search_delay(120);
     let find_count = widgets::label("", "find-count");
     find_count.set_visible(false);
@@ -207,7 +214,9 @@ fn find_strip() -> TopBar {
     replace.append(&one);
     replace.append(&all);
 
-    let bar = chrome::search_strip(&find);
+    let bar = widgets::hbox(4);
+    bar.set_visible(false);
+    bar.append(&find);
     bar.append(&find_count);
     bar.append(&replace);
 
@@ -240,7 +249,7 @@ fn find_strip() -> TopBar {
     });
     replace_entry.add_controller(keys);
 
-    TopBar { bar, crumb, find, find_count, replace, replace_entry }
+    TopBar { bar, find, find_count, replace, replace_entry }
 }
 
 /// The file menu: new, open, save, and the files opened lately.
@@ -304,22 +313,17 @@ fn file_menu() -> gtk::MenuButton {
     menu
 }
 
-/// The strip of tabs under the top bar, with a + at its end.
-/// The bar across the top: the file menu, the tabs (or, with one tab, its
-/// name), and find and settings at the end.
-fn tab_bar(name: &gtk::Label) -> (gtk::Box, gtk::Box, gtk::Box) {
-    let bar = widgets::hbox(4);
-    bar.add_css_class("tab-bar");
-    bar.append(&file_menu());
-    bar.append(name);
-    let strip = widgets::hbox(4);
-    strip.set_hexpand(true);
+/// The tabs in the bar, with a + at their end (hidden with one tab unless the
+/// setting says otherwise; the bar then names the file).
+fn tab_bar() -> (gtk::Box, gtk::Box) {
+    let strip = widgets::hbox(2);
+    strip.add_css_class("tab-bar");
     let tabs = widgets::hbox(2);
     tabs.add_css_class("tabs");
     let scroll = gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::External)
         .vscrollbar_policy(gtk::PolicyType::Never)
-        .hexpand(true)
+        .propagate_natural_width(true)
         .child(&tabs)
         .build();
     // A vertical wheel moves along the tabs.
@@ -335,14 +339,7 @@ fn tab_bar(name: &gtk::Label) -> (gtk::Box, gtk::Box, gtk::Box) {
     let add = widgets::bar_button("list-add-symbolic", "New tab (Ctrl+T)");
     add.connect_clicked(|_| doc::new_tab());
     strip.append(&add);
-    bar.append(&strip);
-    let find = widgets::bar_button("system-search-symbolic", "Find (Ctrl+F) · Replace (Ctrl+H)");
-    find.connect_clicked(|_| toggle_find(false));
-    bar.append(&find);
-    let gear = widgets::bar_button("emblem-system-symbolic", "Settings (Ctrl+,)");
-    gear.connect_clicked(|_| settings_dialog::open());
-    bar.append(&gear);
-    (bar, strip, tabs)
+    (strip, tabs)
 }
 
 /// One tab per open file: its name, a dot when it has unsaved changes, and ✕.
@@ -399,7 +396,7 @@ fn refresh_tabs() {
     ui.borrow().crumb.set_visible(!show_tabs);
 }
 
-/// The tab bar's name, window title and status follow the current tab.
+/// The header's subtitle, window title and readout follow the current tab.
 fn refresh_title() {
     let Some(ui) = ui() else { return };
     let Some(d) = doc::current() else { return };
@@ -422,11 +419,8 @@ pub fn refresh_status() {
 
 pub fn refresh_find_count() {
     let Some(ui) = ui() else { return };
-    let (label, find) = {
-        let u = ui.borrow();
-        (u.find_count.clone(), u.find.clone())
-    };
-    if find.is_visible() {
+    let label = ui.borrow().find_count.clone();
+    if find_open() {
         let text = editor::find_count();
         label.set_visible(!text.is_empty());
         label.set_text(&text);
@@ -436,12 +430,13 @@ pub fn refresh_find_count() {
 /// Ctrl+F opens find; Ctrl+H opens find and replace. Either focuses the find field.
 fn toggle_find(replace: bool) {
     let Some(ui) = ui() else { return };
-    let (find, rep, rep_entry) = {
+    let (bar, button, find, rep, rep_entry) = {
         let u = ui.borrow();
-        (u.find.clone(), u.replace.clone(), u.replace_entry.clone())
+        (u.find_bar.clone(), u.find_button.clone(), u.find.clone(), u.replace.clone(), u.replace_entry.clone())
     };
-    let opening = !find.is_visible();
-    find.set_visible(true);
+    let opening = !bar.is_visible();
+    bar.set_visible(true);
+    button.set_visible(false);
     if replace {
         rep.set_visible(true);
     }
@@ -467,7 +462,8 @@ fn close_find() {
     let Some(ui) = ui() else { return };
     let u = ui.borrow();
     u.find.set_text("");
-    u.find.set_visible(false);
+    u.find_bar.set_visible(false);
+    u.find_button.set_visible(true);
     u.find_count.set_visible(false);
     u.replace.set_visible(false);
     drop(u);
@@ -476,29 +472,19 @@ fn close_find() {
 }
 
 fn find_open() -> bool {
-    ui().is_some_and(|u| u.borrow().find.is_visible())
+    ui().is_some_and(|u| u.borrow().find_bar.is_visible())
 }
 
-/// The status bar: the shortcuts on the left, the cursor position and counts on the right.
-fn status_bar() -> (gtk::Box, gtk::Label) {
-    let bar = widgets::hbox(16);
-    bar.add_css_class("status-bar");
-    let help = gtk::Button::new();
-    help.add_css_class("status-help");
-    let content = widgets::hbox(10);
-    content.append(&widgets::label("F1", "status-key"));
-    content.append(&widgets::label("Shortcuts", ""));
-    help.set_child(Some(&content));
-    help.set_tooltip_text(Some("Show the keyboard shortcuts"));
-    help.connect_clicked(|_| show_shortcuts());
-    bar.append(&help);
-    let spacer = widgets::hbox(0);
-    spacer.set_hexpand(true);
-    bar.append(&spacer);
+/// The editor's foot: the cursor position and counts as quiet text, no bar.
+fn foot() -> (gtk::Box, gtk::Label) {
+    let foot = widgets::hbox(0);
+    foot.add_css_class("doc-foot");
     let readout = widgets::label("", "status-readout");
     readout.set_ellipsize(gtk::pango::EllipsizeMode::Start);
-    bar.append(&readout);
-    (bar, readout)
+    readout.set_hexpand(true);
+    readout.set_xalign(1.0);
+    foot.append(&readout);
+    (foot, readout)
 }
 
 /// Every keyboard shortcut, for the shortcuts dialog and Settings.

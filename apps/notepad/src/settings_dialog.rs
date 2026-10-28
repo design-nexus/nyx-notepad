@@ -12,7 +12,7 @@ pub use nyx_ui::settings_card::{escape, fit, focus_search, is_open};
 const GROUPS: &[(&str, &str, &str)] = &[
     ("Editor", "format-text-bold-symbolic", "Font, size, spacing, wrapping"),
     ("Files", "folder-documents-symbolic", "Tabs, line endings, saving"),
-    ("Notepad window", "applications-graphics-symbolic", "Theme, glow, motion"),
+    ("Notepad window", "applications-graphics-symbolic", "Theme, accent, motion"),
     ("Keyboard", "input-keyboard-symbolic", "Shortcuts"),
 ];
 
