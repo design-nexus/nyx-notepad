@@ -1,5 +1,5 @@
 use crate::widgets::{self, Page};
-use crate::{editor, prefs, theme};
+use crate::{editor, prefs};
 use gtk::glib;
 use gtk::prelude::*;
 
@@ -132,77 +132,5 @@ pub fn build(page: &Page) {
         |on| prefs::update(|p| p.trim_trailing = on),
     );
     g.add(&r);
-
-    // ----- Notepad window -----
-    let g = page.group("Notepad window");
-    let app_themes = theme::all();
-    let options: Vec<(String, String)> = app_themes.iter().map(|t| (t.id.clone(), t.name.clone())).collect();
-    let (theme_row, theme_dd) = widgets::choice_row(
-        "Theme",
-        "Dracula, Catppuccin, Tokyo Night, One Dark Pro and more. Add your own in <tt>~/.config/nyx-notepad/themes</tt>.",
-        options,
-        &p.theme,
-        |id| {
-            prefs::update(|p| {
-                p.theme = id;
-                p.mode = prefs::ThemeMode::Theme;
-            });
-            theme::apply();
-        },
-    );
-    theme_dd.set_sensitive(p.mode == prefs::ThemeMode::Theme || !theme::omarchy_available());
-
-    if theme::omarchy_available() {
-        let dd = theme_dd.clone();
-        let (r, _) = widgets::switch_row(
-            "Follow Omarchy theme",
-            "Match the desktop's colors and update live whenever the Omarchy theme changes.",
-            p.mode == prefs::ThemeMode::Omarchy,
-            move |on| {
-                prefs::update(|p| p.mode = if on { prefs::ThemeMode::Omarchy } else { prefs::ThemeMode::Theme });
-                dd.set_sensitive(!on);
-                theme::apply();
-            },
-        );
-        g.add(&r);
-    }
-    g.add(&theme_row);
-
-    let swatches = widgets::hbox(4);
-    let refresh_swatches = {
-        let swatches = swatches.clone();
-        move || {
-            while let Some(c) = swatches.first_child() {
-                swatches.remove(&c);
-            }
-            let pal = theme::palette();
-            for c in [&pal.bg, &pal.surface, &pal.muted, &pal.text, &pal.accent, &pal.danger] {
-                let s = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-                s.add_css_class("swatch");
-                let provider = gtk::CssProvider::new();
-                provider.load_from_string(&format!("box {{ background: {c}; }}"));
-                #[allow(deprecated)]
-                s.style_context().add_provider(&provider, gtk::STYLE_PROVIDER_PRIORITY_USER);
-                swatches.append(&s);
-            }
-        }
-    };
-    refresh_swatches();
-    theme::subscribe(&swatches, refresh_swatches);
-    g.add(&widgets::row("Current colors", "", Some(swatches.upcast_ref())));
-
-    g.add(&widgets::accent_row("notepad"));
-    let (r, _) =
-        widgets::switch_row("Reduce motion", "Turn off transitions and animations in this window.", p.reduce_motion, |on| {
-            prefs::update(|p| p.reduce_motion = on);
-            theme::apply();
-        });
-    g.add(&r);
-
-    // ----- Keyboard -----
-    let g = page.group("Keyboard");
-    for (keys, what) in crate::window::SHORTCUTS {
-        g.add(&widgets::row(what, "", Some(widgets::key_caps(keys).upcast_ref())));
-    }
     g.note(&format!("Open files from a terminal or a binding with <tt>{}</tt>.", glib::markup_escape_text("notepad FILE…")));
 }

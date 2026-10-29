@@ -4,7 +4,7 @@
 use crate::sections::settings;
 use crate::{widgets, window};
 use gtk::prelude::*;
-use nyx_ui::settings_card::{self, Spec};
+use nyx_ui::settings_card::{self, About, Spec, Standard};
 
 pub use nyx_ui::settings_card::{escape, fit, focus_search, is_open};
 
@@ -12,11 +12,28 @@ pub use nyx_ui::settings_card::{escape, fit, focus_search, is_open};
 const GROUPS: &[(&str, &str, &str)] = &[
     ("Editor", "format-text-bold-symbolic", "Font, size, spacing, wrapping"),
     ("Files", "folder-documents-symbolic", "Tabs, line endings, saving"),
-    ("Notepad window", "applications-graphics-symbolic", "Theme, accent, motion"),
-    ("Keyboard", "input-keyboard-symbolic", "Shortcuts"),
 ];
 
-const SPEC: Spec = Spec { groups: GROUPS, search_text: None };
+const SPEC: Spec = Spec {
+    groups: GROUPS,
+    search_text: None,
+    standard: Some(Standard {
+        app: "notepad",
+        about: About {
+            name: "Notepad",
+            icon: "io.github.design_nexus.nyx.Notepad",
+            version: env!("CARGO_PKG_VERSION"),
+            description: "Plain text with tabs, adjustable fonts and sessions that keep unsaved text.",
+            licence: "MIT",
+            website: "https://github.com/design-nexus/nyx-notepad",
+            issues: "https://github.com/design-nexus/nyx-notepad/issues",
+            credits: &[],
+        },
+        shortcuts: window::SHORTCUTS,
+        reduce_motion: || crate::prefs::get().reduce_motion,
+        set_reduce_motion: |on| crate::prefs::update(|p| p.reduce_motion = on),
+    }),
+};
 
 pub fn open() {
     let (Some(overlay), Some(window)) = (window::overlay(), window::window()) else { return };
