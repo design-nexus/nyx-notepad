@@ -95,15 +95,10 @@ fn build(app: &gtk::Application) {
     header.end.append(&file_menu());
     header.end.append(&chrome::settings_button(settings_dialog::open));
 
-    let frame = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    frame.add_css_class("window-frame");
-    frame.append(&header.root);
-    frame.append(&editor);
-    frame.append(&foot);
-
-    let overlay = gtk::Overlay::new();
-    overlay.set_child(Some(&frame));
-    window.set_child(Some(&overlay));
+    let frame = nyx_ui::frame::AppFrame::new(&header.root);
+    frame.set_page(&editor);
+    frame.set_foot(&foot);
+    let overlay = frame.install(&window);
 
     install_keys(&window);
     window.connect_close_request(|_| {
