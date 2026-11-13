@@ -9,10 +9,7 @@ pub fn install() {
     nyx_theme::use_design_2();
     nyx_theme::install(Style {
         window_class: "notepad-window",
-        base_skip: &[
-            ".toast",
-            "window.@APP@ button.toast-action",
-        ],
+        base_skip: &[],
         css: include_str!("style.css"),
         no_glow_css: "",
         extra_colors: None,

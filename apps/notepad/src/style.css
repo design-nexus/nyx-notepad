@@ -1,79 +1,77 @@
-.toast {
-  /* Above the readout at the editor's foot. */
-  margin: 18px 18px 40px;
-  padding: 8px 16px;
-  border-radius: 10px;
-  background: @theme_surface;
-  box-shadow: 0 4px 16px alpha(@theme_shadow, 0.5);
-}
+/* ---------- Tabs (in the header) ---------- */
 
-/* ---------- Tabs ---------- */
-
-/* One tab per open file, in the bar after the app's name. */
-.app-header .tab-bar {
-  margin-left: 4px;
-}
-
-.tab-bar .tabs {
+.app-header .tab-row {
+  min-height: 0;
   padding: 0;
+  margin-left: 2px;
 }
 
-.doc-tab {
-  margin: 7px 0;
+/* Every tab shows its ✕, quieter on the tabs not showing. */
+window.notepad-window .tab-row .tab button.tab-close {
+  opacity: 0.55;
+}
+
+.tab-row .tab-dot {
+  min-width: 7px;
+  min-height: 7px;
+  border-radius: 999px;
+  background: @theme_accent;
+}
+
+/* The tabs that don't fit: "+2". */
+window.notepad-window button.tab-more {
+  min-height: 24px;
+  margin: 0 2px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: @field;
+  box-shadow: inset 0 0 0 1px alpha(@theme_text, 0.08);
+  color: @theme_dim_text;
+  font-size: 0.846em;
+  font-weight: 600;
+}
+
+window.notepad-window button.tab-more:hover {
+  background: @row_hover;
+  color: @theme_text;
+}
+
+/* ---------- Header buttons ---------- */
+
+window.notepad-window button.bar-button {
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0;
   border-radius: 6px;
-  padding: 0 2px 0 0;
-  transition: background 150ms ease-out;
 }
 
-.doc-tab:hover {
-  background: @row_hover;
-}
-
-.doc-tab.active {
-  background: alpha(@theme_text, 0.06);
-}
-
-window.notepad-window .doc-tab button.tab-main {
-  min-height: 28px;
-  padding: 0 4px 0 12px;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  color: @theme_dim_text;
-}
-
-window.notepad-window .doc-tab.active button.tab-main {
-  color: @theme_text;
-}
-
-.doc-tab .tab-dirty {
+/* Find is open. */
+window.notepad-window button.bar-button.on {
+  background: @nav_active;
   color: @theme_accent;
-  font-weight: 800;
 }
 
-window.notepad-window .doc-tab button.tab-close {
-  min-width: 22px;
-  min-height: 22px;
-  padding: 0;
-  border-radius: 4px;
-  border: none;
-  background: transparent;
-  color: @theme_dim_text;
-  opacity: 0;
-}
-
-window.notepad-window .doc-tab:hover button.tab-close,
-window.notepad-window .doc-tab.active button.tab-close {
-  opacity: 1;
-}
-
-window.notepad-window .doc-tab button.tab-close:hover {
-  background: @row_hover;
+window.notepad-window button.file-button {
+  min-height: 30px;
+  margin-right: 4px;
+  padding: 0 8px 0 12px;
+  background: @field;
+  box-shadow: inset 0 0 0 1px alpha(@theme_text, 0.06);
   color: @theme_text;
+  font-weight: 600;
 }
 
-window.notepad-window .doc-tab button.tab-close image {
+window.notepad-window button.file-button:hover {
+  background: @row_hover;
+}
+
+window.notepad-window button.file-button.open {
+  box-shadow: inset 0 0 0 1px alpha(@theme_accent, 0.6);
+}
+
+window.notepad-window button .chevron {
   -gtk-icon-size: 12px;
+  color: @theme_dim_text;
 }
 
 /* ---------- Editor ---------- */
@@ -102,63 +100,87 @@ textview.editor > border.left {
   color: alpha(@theme_dim_text, 0.75);
 }
 
-.find-count {
-  color: @theme_dim_text;
-  font-size: 0.86em;
-  font-feature-settings: "tnum";
-  margin: 0 6px;
+/* The selected match while finding: the current one, solid. */
+textview.editor.finding > text > selection {
+  background: @theme_warning;
+  color: #1a1406;
 }
 
-/* The cursor position and counts, quiet text at the editor's foot. */
+/* ---------- Find and replace (a card over the text) ---------- */
+
+.find-card {
+  padding: 8px;
+  background: @theme_popover;
+  border: 1px solid alpha(@theme_text, 0.07);
+  border-radius: var(--nyx-radius-dialog);
+  box-shadow: 0 12px 32px alpha(@theme_shadow, 0.55);
+}
+
+.find-field {
+  min-height: 30px;
+  padding: 0 10px;
+  background: @field;
+  border: 1px solid transparent;
+  border-radius: var(--nyx-radius-small);
+}
+
+.find-field:focus-within {
+  border-color: alpha(@theme_accent, 0.6);
+}
+
+.find-field > image {
+  -gtk-icon-size: 14px;
+  color: @theme_dim_text;
+}
+
+.find-count {
+  color: @theme_text_tertiary;
+  font-size: 0.846em;
+  font-feature-settings: "tnum";
+}
+
+window.notepad-window button.find-action {
+  min-height: 28px;
+  padding: 0 10px;
+  font-weight: 500;
+}
+
+/* ---------- Foot ---------- */
+
+/* The cursor's place and counts, then the buttons that change the file's line
+ * endings, the indent and the text size. */
 .doc-foot {
-  padding: 4px 16px 6px;
+  min-height: 32px;
+  padding: 0 10px 0 18px;
+  border-top: 1px solid @sheet_line;
 }
 
 .doc-foot .status-readout {
-  color: @theme_dim_text;
-  font-size: 11.5px;
+  color: @theme_text_tertiary;
+  font-size: 0.846em;
   font-feature-settings: "tnum";
 }
 
-window.notepad-window button.toast-action {
-  min-height: 26px;
-  margin-left: 12px;
-  background: @theme_accent;
-  color: @theme_on_accent;
-  border: none;
-  font-weight: 600;
-}
-
-window.notepad-window button.bar-button {
-  min-width: 30px;
-  min-height: 30px;
-  padding: 0;
+window.notepad-window button.foot-pill {
+  min-height: 22px;
+  padding: 0 6px 0 8px;
   border-radius: 6px;
-  border-color: transparent;
   background: transparent;
   color: @theme_dim_text;
+  font-size: 0.846em;
 }
 
-window.notepad-window button.bar-button:hover {
+window.notepad-window button.foot-pill:hover,
+window.notepad-window button.foot-pill.open {
   background: @row_hover;
   color: @theme_text;
 }
 
-/* A config-file menu in the top bar looks like the other bar buttons. */
-window.notepad-window menubutton.bar-button > button {
-  min-width: 32px;
-  min-height: 32px;
-  padding: 0;
-  border-radius: 6px;
-  border-color: transparent;
-  background: transparent;
-  color: @theme_dim_text;
+window.notepad-window button.foot-pill .chevron {
+  -gtk-icon-size: 11px;
 }
 
-window.notepad-window menubutton.bar-button > button:hover {
-  background: @row_hover;
-  color: @theme_text;
-}
+/* ---------- Settings ---------- */
 
 window.notepad-window button.dialog-nav {
   min-height: 0;
@@ -174,12 +196,4 @@ window.notepad-window button.dialog-nav:hover {
 
 window.notepad-window button.dialog-nav.active {
   background: @lift_active;
-}
-
-.menu-heading {
-  margin: 8px 12px 4px;
-  font-size: 0.76em;
-  font-weight: 600;
-  letter-spacing: 1px;
-  color: @theme_dim_text;
 }

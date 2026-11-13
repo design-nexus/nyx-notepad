@@ -59,13 +59,12 @@ thread_local! {
     static NEXT_ID: Cell<u64> = const { Cell::new(1) };
     static CLOSED: RefCell<Vec<Closed>> = const { RefCell::new(Vec::new()) };
     static LISTENERS: RefCell<Vec<(glib::WeakRef<gtk::Widget>, Listener)>> = const { RefCell::new(Vec::new()) };
-    /// One tag table for every buffer, so the search and current-line colours change in one place.
+    /// One tag table for every buffer, so the search colour changes in one place.
     static TAGS: gtk::TextTagTable = make_tags();
 }
 
 fn make_tags() -> gtk::TextTagTable {
     let table = gtk::TextTagTable::new();
-    table.add(&gtk::TextTag::new(Some("current-line")));
     table.add(&gtk::TextTag::new(Some("match")));
     table
 }
@@ -132,6 +131,18 @@ impl Doc {
 
     pub fn crlf(&self) -> bool {
         self.crlf.get()
+    }
+
+    /// Save with other line endings. A file then differs from what's on disk.
+    pub fn set_crlf(&self, crlf: bool) {
+        if self.crlf.replace(crlf) == crlf {
+            return;
+        }
+        if self.path().is_some() {
+            self.scratch_stale.set(true);
+            self.buffer.set_modified(true);
+        }
+        crate::session::save_soon();
     }
 
     pub fn mtime(&self) -> Option<SystemTime> {

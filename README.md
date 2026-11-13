@@ -13,9 +13,10 @@ from your Omarchy theme and fits a half-screen tile.
 - **Formatting:** pick the font and size, line spacing, word wrap, tab width, spaces
   instead of tabs, and a centered 80- or 100-column text width. Line numbers and a
   current-line highlight are optional. Changes apply as you make them, and
-  <kbd>Ctrl</kbd>+<kbd>+</kbd>/<kbd>−</kbd> change the size while you type.
-- **Find and replace:** <kbd>Ctrl</kbd>+<kbd>F</kbd> highlights every match and counts
-  them; <kbd>Ctrl</kbd>+<kbd>H</kbd> replaces one at a time or all at once (one undo).
+  <kbd>Ctrl</kbd>+<kbd>+</kbd>/<kbd>−</kbd> change the size while you type. The buttons
+  at the foot change the file's line endings, the indent and the text size.
+- **Find and replace:** <kbd>Ctrl</kbd>+<kbd>F</kbd> opens a small card over the text that
+  highlights every match and counts them; <kbd>Ctrl</kbd>+<kbd>H</kbd> replaces one at a time or all at once (one undo).
 - **Files stay as they were:** LF or CRLF line endings and file permissions are kept,
   and saves are atomic. Files changed by another program reload on their own, unless
   you have unsaved edits, in which case you're told.

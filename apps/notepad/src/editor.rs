@@ -26,12 +26,16 @@ struct Editor {
     matches: usize,
 }
 
+/// How far the current line's band reaches past the text column on each side.
+const BAND_PAD: i32 = 20;
+
 thread_local! {
     static ED: RefCell<Option<Editor>> = const { RefCell::new(None) };
     static SIZE_SCALE: RefCell<glib::WeakRef<gtk::Scale>> = RefCell::new(glib::WeakRef::new());
     static WORDS: Cell<usize> = const { Cell::new(0) };
     static WORDS_PENDING: Cell<Option<glib::SourceId>> = const { Cell::new(None) };
     static MATCH_PENDING: Cell<Option<glib::SourceId>> = const { Cell::new(None) };
+    static FIT_PENDING: Cell<bool> = const { Cell::new(false) };
 }
 
 fn view() -> Option<gtk::TextView> {
@@ -39,13 +43,14 @@ fn view() -> Option<gtk::TextView> {
 }
 
 pub fn build() -> gtk::Widget {
-    let view = gtk::TextView::new();
+    let view: PageView = glib::Object::new();
+    let view: gtk::TextView = view.upcast();
     view.add_css_class("editor");
     view.add_css_class("editor-font");
     view.set_monospace(false);
     view.set_hexpand(true);
     view.set_vexpand(true);
-    view.set_top_margin(12);
+    view.set_top_margin(28);
     view.set_bottom_margin(36);
     view.set_accepts_tab(true);
 
@@ -93,8 +98,10 @@ pub fn build() -> gtk::Widget {
     vadj.connect_value_changed(move |_| g.queue_draw());
     let g = gutter.clone();
     vadj.connect_upper_notify(move |_| g.queue_draw());
-    // The text column is re-centred whenever the width changes.
-    scroll.hadjustment().connect_page_size_notify(|_| fit_width());
+    // The text column is re-centred whenever the width changes. Not right away: the
+    // view sets the page size while validating its lines, and new margins then would
+    // invalidate them under it (GTK aborts on `onscreen_validated`).
+    scroll.hadjustment().connect_page_size_notify(|_| fit_width_soon());
 
     ED.with(|e| {
         *e.borrow_mut() = Some(Editor {
@@ -245,8 +252,8 @@ pub fn apply_prefs() {
     view.set_pixels_below_lines(gap);
     let g = gutter();
     view.set_gutter(gtk::TextWindowType::Left, if p.line_numbers { g.as_ref() } else { None });
-    mark_current_line();
     recolor();
+    window::refresh_status();
     // The font change reaches the view's Pango context on the next frame.
     glib::idle_add_local_once(|| {
         let Some(view) = self::view() else { return };
@@ -268,26 +275,48 @@ pub fn apply_prefs() {
     });
 }
 
-/// Side margins: the page padding, or wider to centre a column of 80 or 100 characters.
+fn fit_width_soon() {
+    if FIT_PENDING.with(|p| p.replace(true)) {
+        return;
+    }
+    glib::idle_add_local_once(|| {
+        FIT_PENDING.with(|p| p.set(false));
+        fit_width();
+    });
+}
+
+/// Between the line numbers' gutter and the text.
+const GUTTER_GAP: i32 = 12;
+
+/// Side margins: the page padding, or wider to centre a column of 80 or 100 characters
+/// in the whole view. Line numbers stay beside the text: the gutter widens to fill the
+/// space on the left.
 fn fit_width() {
-    let Some((view, scroll, char_w, gutter)) =
-        ED.with(|e| e.borrow().as_ref().map(|e| (e.view.clone(), e.scroll.clone(), e.char_w.get(), e.gutter.clone())))
+    let Some((view, char_w, gutter)) =
+        ED.with(|e| e.borrow().as_ref().map(|e| (e.view.clone(), e.char_w.get(), e.gutter.clone())))
     else {
         return;
     };
     let p = prefs::get();
-    let width = scroll.hadjustment().page_size() as i32;
+    let width = view.width();
     let pad = if window::narrow() { 16 } else { 24 };
-    let gutter_w = if p.line_numbers { gutter.width_request().max(0) } else { 0 };
+    let lead = if p.line_numbers { gutter.imp().min_width.get() + GUTTER_GAP } else { pad };
     let (left, right) = match p.text_width.parse::<i32>() {
         Ok(cols) if p.word_wrap && width > 0 => {
-            let spare = (width - gutter_w - cols * char_w).max(2 * pad);
-            (spare / 2, spare - spare / 2)
+            let column = cols * char_w;
+            let left = ((width - column) / 2).max(lead);
+            (left, (width - left - column).max(pad))
         }
-        _ => (pad, pad),
+        _ => (lead, pad),
     };
-    // With line numbers the gutter takes the left padding's place.
-    view.set_left_margin(if p.line_numbers { (left - pad + 12).max(12) } else { left });
+    if p.line_numbers {
+        if gutter.width_request() != left - GUTTER_GAP {
+            gutter.set_width_request(left - GUTTER_GAP);
+        }
+        view.set_left_margin(GUTTER_GAP);
+    } else {
+        view.set_left_margin(left);
+    }
     view.set_right_margin(right);
 }
 
@@ -295,47 +324,44 @@ fn fit_width() {
 fn recolor() {
     let pal = theme::palette();
     let parse = |s: &str| gdk::RGBA::parse(s).unwrap_or(gdk::RGBA::BLACK);
-    let (bg, accent) = (parse(&pal.bg), parse(&pal.accent));
-    let mix = |t: f32| {
+    let (bg, accent, warning) = (parse(&pal.bg), parse(&pal.accent), parse(&theme::look().warning));
+    let mix = |to: &gdk::RGBA, t: f32| {
         gdk::RGBA::new(
-            bg.red() + (accent.red() - bg.red()) * t,
-            bg.green() + (accent.green() - bg.green()) * t,
-            bg.blue() + (accent.blue() - bg.blue()) * t,
+            bg.red() + (to.red() - bg.red()) * t,
+            bg.green() + (to.green() - bg.green()) * t,
+            bg.blue() + (to.blue() - bg.blue()) * t,
             1.0,
         )
     };
-    let tags = doc::tags();
-    if let Some(t) = tags.lookup("current-line") {
-        t.set_paragraph_background_rgba(Some(&mix(0.06)));
+    if let Some(t) = doc::tags().lookup("match") {
+        t.set_background_rgba(Some(&mix(&warning, 0.3)));
     }
-    if let Some(t) = tags.lookup("match") {
-        t.set_background_rgba(Some(&mix(0.32)));
+    if let Some(v) = view().and_downcast::<PageView>() {
+        let band = prefs::get().highlight_line.then(|| mix(&accent, if pal.light { 0.08 } else { 0.06 }));
+        *v.imp().band.borrow_mut() = band;
+    }
+    mark_current_line();
+}
+
+/// The band behind the cursor's line is drawn with the text; redraw it where it moved.
+fn mark_current_line() {
+    if let Some(v) = view() {
+        v.queue_draw();
     }
     if let Some(g) = gutter() {
         g.queue_draw();
     }
 }
 
-fn mark_current_line() {
-    let Some(d) = doc::current() else { return };
-    let b = &d.buffer;
-    let (s, e) = b.bounds();
-    b.remove_tag_by_name("current-line", &s, &e);
-    // Only while nothing is selected: the selection says enough.
-    if !prefs::get().highlight_line || b.has_selection() {
-        return;
+/// While finding, the selected match is drawn like a current match.
+pub fn set_finding(on: bool) {
+    if let Some(v) = view() {
+        if on {
+            v.add_css_class("finding");
+        } else {
+            v.remove_css_class("finding");
+        }
     }
-    let mut start = b.iter_at_mark(&b.get_insert());
-    start.set_line_offset(0);
-    let mut end = start;
-    if !end.ends_line() {
-        end.forward_to_line_end();
-    }
-    // An empty line still gets its band: the tag needs at least the line break.
-    if start == end {
-        end.forward_char();
-    }
-    b.apply_tag_by_name("current-line", &start, &end);
 }
 
 // ---------- Size ----------
@@ -347,12 +373,16 @@ pub fn register_size_scale(scale: &gtk::Scale) {
 /// Ctrl + / Ctrl − / Ctrl 0.
 pub fn zoom(step: i32) {
     let size = if step == 0 { prefs::DEFAULT_SIZE } else { (prefs::get().font_size + step as f64).clamp(6.0, 48.0) };
+    set_size(size);
+    window::toast(&format!("Text size {size} pt"));
+}
+
+pub fn set_size(size: f64) {
     prefs::update(|p| p.font_size = size);
     apply_prefs();
     if let Some(s) = SIZE_SCALE.with(|s| s.borrow().upgrade()) {
         s.set_value(size);
     }
-    window::toast(&format!("Text size {size} pt"));
 }
 
 // ---------- Status ----------
@@ -374,19 +404,26 @@ fn count_words_soon() {
     WORDS_PENDING.with(|p| p.set(Some(id)));
 }
 
-/// "Ln 12, Col 4 · 231 words · LF", with the selection's size while there is one.
+/// "Ln 12, Col 4 · 231 words", with the selection's size while there is one and the
+/// match count while finding.
 pub fn status() -> String {
     let Some(d) = doc::current() else { return String::new() };
     let b = &d.buffer;
     let it = b.iter_at_mark(&b.get_insert());
     let mut parts = vec![format!("Ln {}, Col {}", it.line() + 1, it.line_offset() + 1)];
-    if let Some((s, e)) = b.selection_bounds() {
+    let finding = !query().is_empty();
+    // While finding, the selection is the match.
+    if let Some((s, e)) = b.selection_bounds().filter(|_| !finding) {
         let n = (e.offset() - s.offset()).unsigned_abs() as usize;
         parts.push(format!("{} selected", thousands(n)));
     }
     let words = WORDS.with(|w| w.get());
     parts.push(format!("{} {}", thousands(words), if words == 1 { "word" } else { "words" }));
-    parts.push(if d.crlf() { "CRLF".into() } else { "LF".into() });
+    if finding {
+        let n = ED.with(|e| e.borrow().as_ref().map(|e| e.matches).unwrap_or(0));
+        let count = if n >= MAX_MATCHES { format!("{}+", thousands(n)) } else { thousands(n) };
+        parts.push(format!("{count} {}", if n == 1 { "match" } else { "matches" }));
+    }
     parts.join(" · ")
 }
 
@@ -461,7 +498,7 @@ fn rematch() {
             e.matches = n;
         }
     });
-    window::refresh_find_count();
+    window::refresh_status();
 }
 
 fn select_match(s: &gtk::TextIter, e: &gtk::TextIter) {
@@ -582,6 +619,66 @@ pub fn replace_all(with: &str) {
     });
 }
 
+// ---------- The text view ----------
+
+mod view_imp {
+    use super::*;
+
+    /// The text view, drawing the current line's band across the text column only
+    /// (a paragraph background would fill the margins too).
+    #[derive(Default)]
+    pub struct PageView {
+        pub band: RefCell<Option<gdk::RGBA>>,
+    }
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for PageView {
+        const NAME: &'static str = "NotepadPageView";
+        type Type = super::PageView;
+        type ParentType = gtk::TextView;
+    }
+
+    impl ObjectImpl for PageView {}
+    impl WidgetImpl for PageView {}
+
+    impl TextViewImpl for PageView {
+        fn snapshot_layer(&self, layer: gtk::TextViewLayer, snapshot: gtk::Snapshot) {
+            if layer == gtk::TextViewLayer::BelowText
+                && let Some(color) = *self.band.borrow()
+            {
+                self.draw_band(&snapshot, &color);
+            }
+            self.parent_snapshot_layer(layer, snapshot);
+        }
+    }
+
+    impl PageView {
+        /// Only while nothing is selected: the selection says enough. In buffer coordinates.
+        fn draw_band(&self, snapshot: &gtk::Snapshot, color: &gdk::RGBA) {
+            let view = self.obj();
+            let b = view.buffer();
+            if b.has_selection() {
+                return;
+            }
+            let (y, h) = view.line_yrange(&b.iter_at_mark(&b.get_insert()));
+            let rect = view.visible_rect();
+            let (x0, x1) = if view.wrap_mode() == gtk::WrapMode::None {
+                (rect.x(), rect.x() + rect.width())
+            } else {
+                let x0 = (view.left_margin() - BAND_PAD).max(0);
+                (x0, (rect.width() - view.right_margin() + BAND_PAD).clamp(x0, rect.width()))
+            };
+            snapshot.append_color(color, &gtk::graphene::Rect::new(x0 as f32, y as f32, (x1 - x0) as f32, h as f32));
+        }
+    }
+}
+
+glib::wrapper! {
+    pub struct PageView(ObjectSubclass<view_imp::PageView>)
+        @extends gtk::TextView, gtk::Widget,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Scrollable, gtk::AccessibleText;
+}
+
 // ---------- Line numbers ----------
 
 mod imp {
@@ -590,6 +687,8 @@ mod imp {
     #[derive(Default)]
     pub struct LineGutter {
         pub view: glib::WeakRef<gtk::TextView>,
+        /// Room for the biggest line number; `fit_width` may make the gutter wider.
+        pub min_width: Cell<i32>,
     }
 
     #[glib::object_subclass]
@@ -649,9 +748,8 @@ impl LineGutter {
         let digits = view.buffer().line_count().max(1).to_string().len().max(2);
         let (w, _) = self.create_pango_layout(Some(&"0".repeat(digits))).pixel_size();
         let want = w + 24;
-        if self.width_request() != want {
-            self.set_width_request(want);
-            fit_width();
+        if self.imp().min_width.replace(want) != want {
+            fit_width_soon();
         }
     }
 }
