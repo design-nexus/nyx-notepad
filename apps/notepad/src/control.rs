@@ -70,9 +70,7 @@ pub fn handle(name: &str, args: Value) -> Result<Value, String> {
                 Some(_) => control::save_target(&args)?,
                 None => d.path().ok_or("this tab has no file yet; give a path")?,
             };
-            if !doc::write_to(&d, &path) {
-                return Err("couldn't save".into());
-            }
+            doc::write_to(&d, &path)?;
             Ok(json!({"tab": tab(&d), "saved": path}))
         }
         _ => Err(format!("unknown tool {name}")),

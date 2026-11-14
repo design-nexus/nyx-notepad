@@ -35,6 +35,9 @@ struct Ui {
     more_width: i32,
     hidden: Vec<usize>,
     readout: gtk::Label,
+    /// Shown only for a file that isn't UTF-8.
+    encoding_button: gtk::Button,
+    encoding: gtk::Label,
     ending: gtk::Label,
     indent: gtk::Label,
     size: gtk::Label,
@@ -87,8 +90,10 @@ pub fn present(app: &gtk::Application, section: Option<&str>) {
         ui.borrow().window.present();
     }
     editor::focus();
-    // Developer aid: NOTEPAD_SHOW=menu, find=TEXT, pill=N (0 to 2) or close=N (a tab),
-    // comma-separated, opens those once the window is up, for screenshots of a test copy.
+    // Developer aid: NOTEPAD_SHOW=menu, find=TEXT, pill=N (0 to 3; 0 is the encoding,
+    // shown only for files that aren't UTF-8), close=N (a tab), type=TEXT (at the end),
+    // save or reopen, comma-separated, does those once the window is up, for screenshots
+    // of a test copy.
     if let Ok(show) = std::env::var("NOTEPAD_SHOW") {
         glib::timeout_add_local_once(std::time::Duration::from_millis(900), move || {
             for part in show.split(',') {
@@ -142,6 +147,13 @@ fn show_for_test(what: &str) {
                 doc::close(d);
             }
         }
+        "type" => {
+            if let Some(d) = doc::current() {
+                d.buffer.insert(&mut d.buffer.end_iter(), arg);
+            }
+        }
+        "save" => doc::save(),
+        "reopen" => doc::reopen_closed(),
         // The compositor doesn't draw a menu of a window without focus, so the window
         // and its menu are drawn into a PNG instead.
         "png" => {
@@ -296,6 +308,8 @@ fn build(app: &gtk::Application) {
         more_width: 0,
         hidden: Vec::new(),
         readout: foot.readout,
+        encoding_button: foot.encoding_button,
+        encoding: foot.encoding,
         ending: foot.ending,
         indent: foot.indent,
         size: foot.size,
@@ -698,12 +712,15 @@ fn refresh_title() {
 /// Re-read the cursor position, counts and the foot's buttons.
 pub fn refresh_status() {
     let Some(ui) = ui() else { return };
-    let (readout, ending, indent, size) = {
+    let (readout, encoding_button, encoding, ending, indent, size) = {
         let u = ui.borrow();
-        (u.readout.clone(), u.ending.clone(), u.indent.clone(), u.size.clone())
+        (u.readout.clone(), u.encoding_button.clone(), u.encoding.clone(), u.ending.clone(), u.indent.clone(), u.size.clone())
     };
     readout.set_text(&editor::status());
     let p = prefs::get();
+    let d = doc::current().filter(|d| d.opened_encoding() != encoding_rs::UTF_8);
+    encoding_button.set_visible(d.is_some());
+    encoding.set_text(d.map(|d| d.encoding().name()).unwrap_or_default());
     ending.set_text(if doc::current().is_some_and(|d| d.crlf()) { "CRLF" } else { "LF" });
     indent.set_text(&format!("{}: {}", if p.insert_spaces { "Spaces" } else { "Tabs" }, p.tab_width));
     size.set_text(&format!("{} pt", p.font_size));
@@ -773,13 +790,16 @@ fn find_open() -> bool {
 struct Foot {
     root: gtk::Box,
     readout: gtk::Label,
+    encoding_button: gtk::Button,
+    encoding: gtk::Label,
     ending: gtk::Label,
     indent: gtk::Label,
     size: gtk::Label,
 }
 
-/// The sheet's foot: the cursor's place and counts, then buttons for the file's line
-/// endings, the indent and the text size, each opening a menu that changes it.
+/// The sheet's foot: the cursor's place and counts, then buttons for the file's
+/// encoding (only when it isn't UTF-8), line endings, the indent and the text size,
+/// each opening a menu that changes it.
 fn foot() -> Foot {
     let root = widgets::hbox(2);
     root.add_css_class("doc-foot");
@@ -788,6 +808,20 @@ fn foot() -> Foot {
     readout.set_hexpand(true);
     readout.set_xalign(0.0);
     root.append(&readout);
+
+    let (encoding_button, encoding) = chevron_button("", "foot-pill");
+    encoding_button.set_tooltip_text(Some("This file's text encoding"));
+    encoding_button.set_visible(false);
+    menu_button(&encoding_button, true, || {
+        let Some(d) = doc::current() else { return Vec::new() };
+        let (opened, now) = (d.opened_encoding(), d.encoding());
+        vec![
+            menu::heading("Save as"),
+            menu::check(opened.name(), now == opened, move |_| set_encoding(opened)).key("As opened"),
+            menu::check("UTF-8", now == encoding_rs::UTF_8, |_| set_encoding(encoding_rs::UTF_8)).key("Every character"),
+        ]
+    });
+    root.append(&encoding_button);
 
     let (b, ending) = chevron_button("LF", "foot-pill");
     b.set_tooltip_text(Some("This file's line endings"));
@@ -836,7 +870,14 @@ fn foot() -> Foot {
     });
     root.append(&b);
 
-    Foot { root, readout, ending, indent, size }
+    Foot { root, readout, encoding_button, encoding, ending, indent, size }
+}
+
+fn set_encoding(encoding: &'static encoding_rs::Encoding) {
+    if let Some(d) = doc::current() {
+        d.set_encoding(encoding);
+    }
+    refresh_status();
 }
 
 fn set_line_ending(crlf: bool) {

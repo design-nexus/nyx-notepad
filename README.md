@@ -9,7 +9,8 @@ from your Omarchy theme and fits a half-screen tile.
   changes. Untitled tabs are named after their first line.
 - **Nothing to lose:** closing the window never asks to save. Open tabs, cursor
   positions and unsaved text all come back next time. A tab closed with unsaved
-  changes can be brought back with *Undo* or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd>.
+  changes can be brought back with *Undo* or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd>,
+  also after a restart, for a week.
 - **Formatting:** pick the font and size, line spacing, word wrap, tab width, spaces
   instead of tabs, and a centered 80- or 100-column text width. Line numbers and a
   current-line highlight are optional. Changes apply as you make them, and
@@ -17,8 +18,10 @@ from your Omarchy theme and fits a half-screen tile.
   at the foot change the file's line endings, the indent and the text size.
 - **Find and replace:** <kbd>Ctrl</kbd>+<kbd>F</kbd> opens a small card over the text that
   highlights every match and counts them; <kbd>Ctrl</kbd>+<kbd>H</kbd> replaces one at a time or all at once (one undo).
-- **Files stay as they were:** LF or CRLF line endings and file permissions are kept,
-  and saves are atomic. Files changed by another program reload on their own, unless
+- **Files stay as they were:** LF or CRLF line endings, the text encoding (a file in
+  Windows-1252, Shift_JIS or another legacy encoding is saved in it; the foot shows it
+  and can switch it to UTF-8, and saving asks first if you've typed something it can't
+  hold) and file permissions are kept, and saves are atomic. Files changed by another program reload on their own, unless
   you have unsaved edits, in which case you're told.
 - **Themes:** follows the Omarchy theme live, or pick one of 15 bundled themes, or add
   your own.
