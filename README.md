@@ -1,7 +1,7 @@
 # Notepad
 
-A plain-text notepad for [Omarchy](https://omarchy.org), with tabs. It takes its colors
-from your Omarchy theme and fits a half-screen tile.
+A plain-text notepad for NyxOS and [Omarchy](https://omarchy.org), with tabs. It takes its colors
+from the desktop theme and fits a half-screen tile.
 
 ## What it does
 
@@ -23,10 +23,12 @@ from your Omarchy theme and fits a half-screen tile.
   and can switch it to UTF-8, and saving asks first if you've typed something it can't
   hold) and file permissions are kept, and saves are atomic. Files changed by another program reload on their own, unless
   you have unsaved edits, in which case you're told.
-- **Themes:** follows the Omarchy theme live, or pick one of 15 bundled themes, or add
+- **Themes:** follows the desktop theme live, or pick one of 15 bundled themes, or add
   your own.
 
 ## Install
+
+On NyxOS, choose Notepad in Welcome when you set up, or install it later from the Store or with `nyx install nyx-notepad`. On Omarchy:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/design-nexus/nyx-notepad/main/install.sh | bash -s -- notepad
